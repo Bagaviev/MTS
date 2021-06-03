@@ -1,0 +1,525 @@
+# from_zeus = spark.read.orc('')
+# from_zeus.show(3)
+
+
+trbr_cisco.createOrReplaceTempView('trbr_cisco')
+
+
+# LATERAL VIEW explode(split(sites,'[|]')) exp_phones10 as domain
+
+
+#c360 birthdays/trips etc.
+raw.mtsru_tdwh_smr_tdprd__prd_c360_t_dm_dm_c360_raw 
+справочник регионов к нему: прок prd_advert_dict.v_regions_codes_dict/ двх advert_sb.t_regions_codes_dict
+
+spark.sql("select * from prd_advert_dict.v_region_gibdd_codes where code = 47 limit 3").show(30, False)
+справочник для регион.факта
+
+spark.sql("select distinct 2gis_cat_id, 2gis_cat_name from prd_advert_dict.v_catalog_2gis_phones where lower(2gis_cat_name) like '%подрост%'").show(30, False)
+
+
+# from pyspark.sql.types import StructType, StructField, StringType
+# schema = StructType([StructField('id', StringType(), True),
+#                      StructField('city', StringType(), True),
+#                      StructField('address', StringType(), True),
+#                      StructField('type', StringType(), True),
+#                      StructField('full_price', StringType(), True),
+#                      StructField('phones', StringType(), True),
+#                      StructField('is_new_building', StringType(), True),
+#                      StructField('is_sale', StringType(), True)])
+
+# comm_list = ['id','city','address','type','full_price','phones','is_new_building', 'is_sale']
+# frame_df = spark.createDataFrame(frame[comm_list], schema)
+# frame_df.createOrReplaceTempView('frame_df')
+
+
+# pivot	
+spark.sql("""
+SELECT descr,
+   max(CASE WHEN app_name = 'WhatsApp' THEN percent END) AS WhatsApp,
+   max(CASE WHEN app_name = 'Viber' THEN percent END) AS Viber,
+   max(CASE WHEN app_name = 'WhatsViber' THEN percent END) AS WhatsViber
+FROM pivot
+GROUP BY descr""").show()
+
+
+import pandas as pd
+import glob
+
+path = r'/home//SEGS'
+all_files = glob.glob(path + "/*.csv")
+
+all_files
+li = []
+
+for filename in all_files:
+    df = pd.read_csv(filename, index_col=None, header=None, dtype=object)
+    df['1'] = all_files[all_files.index(filename)].split('/')[5].split('.')[0]
+    df.head(2)
+    df.count()
+    li.append(df)
+    
+frame = pd.concat(li, sort=False)
+
+frame.reset_index(drop=True, inplace=True)
+frame.drop_duplicates(inplace=True)
+frame.dropna(inplace=True)
+frame.columns = ['msisdn', 'seg']
+frame.head(2)
+frame.tail(2)
+frame.count()
+
+frame_pretty2_df = spark.createDataFrame(frame)
+frame_pretty2_df.createOrReplaceTempView('frame_pretty2_df')
+
+new_raw = spark.createDataFrame(frame)
+new_raw.createOrReplaceTempView('new_raw')
+
+old_raw = spark.createDataFrame(frame)
+old_raw.createOrReplaceTempView('old_raw')
+
+
+pandas.set_option('display.max_colwidth', 40)
+pandas.set_option('display.max_columns', 40)
+
+
+fin1_3_df = clear.toPandas()
+for i in fin1_3_df.seg.unique():
+    for j in fin1_3_df.city_name.unique():
+        fin1_3_df.msisdn[(fin1_3_df.city_name == j) & (fin1_3_df.seg == i)].to_csv('/home//exported_CSV/seg2300/seg2300_{0}_{1}.csv'.format(i,j), index = False)
+
+
+spark.sql("""
+select gg.seg, count(distinct gg.msisdn) from 
+(
+    select distinct a.msisdn, 'seg1' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg1') b on a.msisdn = b.msisdn
+    where a.seg = 'seg1' and b.msisdn is null
+        union all
+    select distinct a.msisdn, 'seg2' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg2') b on a.msisdn = b.msisdn
+    where a.seg = 'seg2' and b.msisdn is null
+        union all
+    select distinct a.msisdn, 'seg3' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg3') b on a.msisdn = b.msisdn
+    where a.seg = 'seg3' and b.msisdn is null
+) gg group by gg.seg order by seg
+""").show()
+
+finnnall = spark.sql("""
+select distinct gg.msisdn, gg.seg from 
+(
+    select distinct a.msisdn, 'seg1' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg1') b on a.msisdn = b.msisdn
+    where a.seg = 'seg1' and b.msisdn is null
+        union all
+    select distinct a.msisdn, 'seg2' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg2') b on a.msisdn = b.msisdn
+    where a.seg = 'seg2' and b.msisdn is null
+        union all
+    select distinct a.msisdn, 'seg3' seg from final a
+    left join (select distinct msisdn from frame_pretty2_df where seg = 'seg1597_seg3') b on a.msisdn = b.msisdn
+    where a.seg = 'seg3' and b.msisdn is null
+) gg""")
+
+
+spark.sql("refresh table prd_advert_dict.v_app_rules")
+spark.sql("""
+select distinct app_name, source from prd_advert_dict.v_app_rules where (
+lower(app_name) like '%avito%'
+OR lower(app_name) like '%wallet%' 
+OR lower(app_name) like '%кошел%к%')
+order by app_name
+""").show(99, False)
+
+
+seg1_sp = seg1_sp.select(seg1_sp.msisdn.substr(-10, 10).alias("msisdn_10"))
+
+
+import pandas as pd
+seg1 = pd.read_csv('../EXCEL_HOSTS/ph.csv', dtype=object, header=None, delimiter=';')
+seg1.columns = ['phones']
+seg1.count()
+seg1.head(3)
+seg1_sp = spark.createDataFrame(seg1)
+seg1_sp.repartition(1).write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_seg2654_phones')
+
+
+check = pd.read_excel('../EXCEL_HOSTS/seg417.xlsx', dtype = object, header=None) 
+check.head(3)
+check.count()
+
+
+seg16_part1 = spark.sql("""
+select distinct msisdn from cdl_cdm.app_d where business_dt >= '2020-02-01'
+and app_name IN ('ВТБ-Онлайн', 'Alfa-Bank', 'Tinkoff', 'Сбербанк Онлайн')""")
+seg16_part1.repartition(5).write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_seg16_part1')
+
+
+import pandas as pd
+mts_bd = spark.sql('select * from prd_advert_dict.v_catalog_mts_bd')
+writer = pd.ExcelWriter('v_catalog_mts_bd.xlsx')
+mts_bd.toPandas().to_excel(writer, 'list1', index = False)
+writer.save()
+
+
+#,trunc(request_d, 'MM') request_m
+
+
+%%time
+calls = spark.sql("""
+select /*+ BROADCAST(advert_sb.bbi_seg1952_phones) */  distinct concat('7', b.msisdn) msisdn, c.seg, a.business_dt from cdl_cdm.cnum_d a 
+inner join prd_advert_ods.imsi_x_msisdn_actual b on a.app_n = b.app_n and a.regid = b.regid
+inner join advert_sb.bbi_seg1952_phones c on substr(c.phones, -10, 10) = substr(trim(a.called_party_number), -10, 10)
+where 1=1         
+    and a.business_dt >= date_sub(current_date, 184)
+    and a.connection_type = 1
+    and a.call_direction = 'O'
+    and a.actv_duration > 10""")
+
+from bbi_utils.dwh_saver import dwh_saver
+dwh_saver(calls, task_num, 'calls', persistent='True', smol='True', partition='')
+
+spark.sql("select seg, count(distinct msisdn) from advert_sb.bbi_dist_seg group by seg order by seg").show(30)
+
+
+spark.sql("""
+select * from (
+    select gg.*, row_number() OVER(PARTITION BY seg ORDER BY cnt DESC) rn from (
+        select seg, host_name, count(distinct msisdn) cnt from advert_sb.bbi_seg2510_hosts_raw group by seg, host_name
+    ) gg) ggg where rn <= 5 order by seg, cnt desc
+""").show(60, False)
+
+	
+uni.select("msisdn", "seg").distinct().groupby("seg").count().orderBy('seg', ascending=True).show()
+uni.select("msisdn").distinct().count()
+
+
+spark.sql("select count(*) from uni where length(msisdn) != 11").show()
+
+
+!hdfs dfs -du -h -s ''
+!hdfs dfs -du -h -s ''
+
+
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", -1)    --выкл автоброадкаст
+spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 50000000)   --только табл менее 50мб буду броадкаститься
+
+
+stable_region_fact = spark.sql("""
+select msisdn, value from (
+select msisdn, value, days, row_number() OVER(PARTITION BY msisdn ORDER BY days DESC) rn from (
+select msisdn, value, count(distinct processed_dt) days from prd_advert_stg.segments_bd_custom where processed_dt >= '2019-06-01' and processed_dt <= '2020-01-01' and name = 'region.fact'
+group by msisdn, value) gg order by msisdn, days desc) ggg where rn = 1""")
+
+
+#scientific format
+pd.set_option('display.float_format', lambda x: '%.3f' % x)
+
+
+weekofyear(date) week
+
+
+metrics0 = spark.sql("""
+select c.*, sum(request_cnt) over(partition by seg, msisdn) clicks_total, sum(days_in_month) over(partition by seg, msisdn) days_total from (
+select seg, msisdn, request_cnt, sum(b.request_days) days_in_month, count(1) over(partition by seg, msisdn) monthes_used from
+(
+    select distinct seg, msisdn, request_days, month(agg_date) month, agg_date, request_cnt from (select seg, msisdn, cast(agg_date as date) agg_date, request_days, request_cnt from advert_sb.bbi_seg1843_hosts_raw) a
+) b
+group by seg, msisdn, month, request_cnt order by msisdn, monthes_used, request_cnt) c
+""").cache()
+metrics0.createOrReplaceTempView('metrics0')
+
+active0 = spark.sql("""
+select distinct seg, msisdn from metrics0
+where days_total > 1""").cache()
+active0.createOrReplaceTempView('active0')
+
+
+# охватики
+seg1 = dist_seg1.select("seg", "msisdn").distinct().groupby("seg").count().orderBy('seg', ascending=True)
+writer = pd.ExcelWriter('/home//exported_CSV/seg2536/seg2536_stat1.xlsx')
+seg1.toPandas().to_excel(writer, 'list1', index = False)
+writer.save()
+
+
+# neperesek
+dist_seg = spark.sql("""
+select msisdn, seg from (
+select
+first_value(rn) over (partition by msisdn) act_row
+,rn
+,msisdn
+,seg
+from (select a.*, row_number() over (partition by msisdn order by seg asc) rn from calls_hosts a)b)c where rn = act_row""").cache()
+dist_seg.write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_dist_seg')
+
+spark.sql("select count(distinct msisdn) from advert_sb.bbi_dist_seg").show(30)
+spark.sql("select count(*) from advert_sb.bbi_dist_seg").show(30)
+spark.sql("select seg, count(distinct msisdn) from advert_sb.bbi_dist_seg group by seg order by seg").show(30)
+
+
+fin_dff = called_citied.toPandas()  
+for i in fin_dff.seg.unique():
+    fin_dff[fin_dff.seg == i]["msisdn"].drop_duplicates().to_csv('/home//exported_CSV/seg2502/seg2502_{}.csv'.format(i), index = False, header = False)
+	
+
+output_joined_uni.toPandas().drop_duplicates().to_csv('/home//exported_CSV/seg1521_objedinen.csv', index = False, header = False)
+seg1pd.toPandas().drop_duplicates().to_csv('/home//exported_CSV/seg2546_stat1.csv', index = False, header = False, encoding='cp1251')
+
+
+domains = spark.sql("select distinct domain from prd_advert_dict.v_catalog_2gis_domains where 2gis_cat_id = 13789").cache()
+domains.createOrReplaceTempView('domains')
+domains.count()
+
+
+%%time   --цикл ntwk
+c=1
+
+def aggregation_ntwk(dt):
+    
+    one_day_cell_lacs_result = spark.sql("""
+    select /*+ BROADCAST(advert_sb.bbi_seg2111_regids) */ distinct a.sas_regid, a.app_n, a.actv_strt_dttm, a.loc_area_id, a.cell_loc_id, c.cell_latitude, c.cell_longitude, a.table_business_date from raw.mtsru_sdwh_smr_ntwk_actv__cdtl a
+    inner join advert_sb.bbi_seg2111_regids b
+        on a.sas_regid = b.regid and a.app_n = b.app_n
+    left join advert_dm.mtsbts c
+        on a.loc_area_id = c.lac and a.cell_loc_id = c.cell_id
+    where a.table_business_date = '{}'""".format(dt))
+    return one_day_cell_lacs_result
+
+for i in dates.select('date').distinct().orderBy('date', ascending=False).collect():
+    
+    result = aggregation_ntwk(i['date'])
+    result.repartition("table_business_date").write.mode("append").format("orc").partitionBy("table_business_date").saveAsTable("advert_sb.bbi_seg2111_extract")
+    
+    spark.sql("select * from advert_sb.bbi_seg2111_extract where table_business_date like '{0}%' limit 2".format(i['date'])).show()
+    print('done:', str(round(c*100/m,2)) + '%')
+    c += 1
+    
+spark.sql("select count(distinct sas_regid, app_n) from advert_sb.bbi_seg2111_extract").show()
+spark.sql("select * from advert_sb.bbi_seg2111_extract where table_business_date >= '2019-09-01' and sas_regid = '60' and app_n = '202293590' limit 5").show()
+
+
+order by cast(regexp_replace(seg, '[^0-9|]+','') as int)
+
+
+city = spark.sql("""
+select distinct city_name, id from 
+(   select distinct a.msisdn, b.city_name, b.id from advert_dm.segments_bd_custom a
+    inner join prd_advert_dict.v_cities_regions b
+    on a.value = b.id
+    where a.name IN ('ms_city_night','ms_city_day','ms_city_residence','ms_city_work')
+) gg where city_name IN ('Москва','Санкт-Петербург','Краснодар')""")
+city.select("city_name", "id").distinct().show()
+
+
+hashed = spark.sql("""
+select sha2(msisdn_salt, 256) hashed_msisdn, msisdn from (
+    select distinct concat('Hn94!hEv7', msisdn) msisdn_salt, msisdn from prd_advert_ods.imsi_x_msisdn_actual
+) salted_msisdn""").cache()
+hashed.createOrReplaceTempView('hashed')
+
+result = spark.sql("""
+select distinct b.*, a.msisdn_hashed from frame_pretty2_df a
+inner join hashed b on a.msisdn_hashed = b.hashed_msisdn
+""").cache()
+result.createOrReplaceTempView('result')
+result.show(2, False)
+result.select('msisdn').distinct().count()
+
+
+spark.sql("describe advert_dm.mtsbts").show()
+	
+	
+channeled = spark.sql("""
+select distinct a.msisdn, a.seg from sexed a
+INNER JOIN prd_advert_ods.imsi_x_msisdn_actual b on a.msisdn = concat('7', b.msisdn)
+INNER JOIN (select * from device_sb.dev_change_staging_ds_n where (build_dt >= current_date() - INTERVAL '5' DAY) and dev_num = 1) c ON a.msisdn = c.mob_num
+where c.dev_terminal_type IN ('smartphone', 'featurephone', 'tablet', 'phablet', 'landline', 'plain')
+AND b.not_m2m = 1 
+AND b.calls_active = 1
+AND b.not_corporate = 1
+AND b.not_opt_out_calls = 1
+and b.city_fact IN ('70000','220000','500000')""").cache()
+channeled.createOrReplaceTempView('channeled')
+channeled.select("msisdn", "seg").distinct().groupby("seg").count().orderBy('seg', ascending=True).show()
+
+channeled.select("msisdn", "seg").distinct().groupby("seg").count().orderBy('count', ascending=True).show()
+channeled.distinct().count()
+
+т.е. для digital:
+	'smartphone', 'tablet', 'phablet'
+для Звонков:
+	'smartphone', 'featurephone', 'landline', 'plain'
+для SMS:
+	'smartphone', 'featurephone', 'tablet', 'phablet', 'landline', 'plain'
+
+	
+spark.sql('select (287548 + 4965) sum').show()
+
+
+macroreg.select("msisdn", "macroregion_name").distinct().groupby("macroregion_name").count().orderBy('count', ascending=False).show()
+
+
+spark.sql("""
+select count(distinct a.msisdn) from advert_sb.bbi_neresedinent a
+inner join travelers_and_mdm b on a.msisdn = b.msisdn
+""").show()
+raw = spark.sql("""
+select distinct a.msisdn from advert_sb.bbi_neresedinent a
+inner join travelers_and_mdm b on a.msisdn = b.msisdn""")
+raw.createOrReplaceTempView('raw')
+
+/home//.local/share/Trash
+
+
+spark.sql("select * from prd_advert_dict.v_mcc_codes limit 3").show(15)
+spark.sql("select * from prd_advert_ods.merchant_mcc limit 3").show(15)
+
+merchants = spark.sql("""
+    select distinct a.merchant from prd_advert_ods.merchant_mcc a    
+    inner join (select distinct mcc from prd_advert_dict.v_mcc_codes where category = 'Магазины одежды') b on a.mcc = b.mcc""")
+merchants.write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_merchants')
+
+trafic = spark.sql("""
+    select /*+ BROADCAST(advert_sb.bbi_merchants) */ distinct a.msisdn, a.merchant, a.operation_time, a.balance_amount, a.charge_amount, a.request_d from raw_sec.mtsru_a2pnews_msk_a2pnews__bank a
+    inner join advert_sb.bbi_merchants b on lower(trim(a.merchant)) = lower(trim(b.merchant))
+    where a.request_d >= '2019-11-01'""")
+trafic.write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_trafic')
+
+spark.sql("select count(distinct msisdn) from advert_sb.bbi_trafic where merchant not like '%chitai-gorod%'").show()
+spark.sql("select merchant, count(distinct msisdn) cnt from advert_sb.bbi_trafic where merchant not like '%chitai-gorod%' group by merchant order by cnt desc limit 20").show(20, False)
+
+
+kino = spark.sql("""
+select distinct msisdn, merchant, operation_time, charge_amount, request_d from raw_sec.mtsru_a2pnews_msk_a2pnews__bank
+where request_d >= '2019-11-01' and (
+lower(merchant) like '%kassa%rambler%ru%'
+or lower(merchant) like '%kinohod%ru%'
+or lower(merchant) like '%volgafilm%ru%')""")
+kino.write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_kino')
+
+
+# Hbase
+task_num='2150'
+import os
+from dstools.spark import init_spark2    
+os.environ["SPARK_CONF_DIR"]="/opt/adv/conf/spark/"
+spark = init_spark2({'appName': 'hbase-spark-session',
+                    'spark.jars.packages': 'com.hortonworks:shc-core:1.1.1-2.1-s_2.11',
+                    'spark.jars.ivySettings': '/opt/adv/conf/spark/advertIvySettings.xml'})
+
+%%time
+from spark_py_utils.hbase import join_to_clickstream_fast
+hosts = ['technopark.ru']
+df = join_to_clickstream_fast(spark, hosts=hosts, last_months=1)
+
+					
+
+from bbi_utils.dwh_saver import dwh_saver
+dwh_saver(seg, task_num, 'seg', persistent='True', smol='True', partition='')
+
+
+cities_laccels2 = spark.sql("""
+select * from (
+select distinct lac, cell_id, addr, case
+when lower(addr) like '%жуковский%' then 'Жуковский'
+when lower(addr) like '%ивантеевка%' then 'Ивантеевка'
+else null end as city from advert_dm.mtsbts
+where business_dt >= '2020-04-01' and (
+lower(addr) like '%жуковский%'
+OR lower(addr) like '%ивантеевка%')) gg where city is not null""").cache()
+cities_laccels2.createOrReplaceTempView('cities_laccels2')
+cities_laccels2.select("lac", "cell_id", "city").distinct().groupby("city").count().orderBy('city', ascending=True).show()
+
+
+citiys = spark.sql("""
+select distinct a.msisdn, a.imsi, b.city from netscout_cdm.agg_subs_geo_home_work a
+inner join cities_laccels2 b on a.night_time_lac = b.lac and a.night_time_cell_id = b.cell_id
+where a.business_dt >= '2020-06-01'""").cache()
+citiys.repartition(5).write.format("orc").mode('overwrite').saveAsTable('advert_sb.bbi_citiys')
+citiys.select("msisdn", "city").distinct().groupby("city").count().orderBy('city', ascending=True).show()
+citiys.select("imsi", "city").distinct().groupby("city").count().orderBy('city', ascending=True).show()
+
+
+df = spark.sql('show partitions raw.mtsru_sdwh_smr_ntwk_actv__cdtl').toPandas()  #др-абоненты
+df.sort_values(by=['partition'], ascending = False).head(5)
+
+
+spark.conf.set("spark.sql.execution.arrow.enabled", "false")
+
+
+# from bbi_utils.archivator import archivator
+# archivator(user='',input_sp=filter_guys,task=task_num)
+
+
+# %%time
+# spark.sql("REFRESH TABLE cdl_cdm.full_host_d")
+# spark.sql("REFRESH TABLE prd_advert_ods.full_host_w")
+# spark.sql("REFRESH TABLE prd_advert_ods.full_host_m")
+# spark.sql("REFRESH TABLE prd_advert_ods.full_host_list")
+# from bbi_utils.aggregator import aggregator_v3
+# aggregator_v3(spark, task_num, '../EXCEL_HOSTS/seg1974.xlsx', 'hosts_raw', '2019-09-19', '2020-03-19', no_agregation='False')
+
+
+spark.sql("show tables from advert_sb like '*bbi_seg2380*'").show(10, False)
+
+
+# import pandas as pd
+# pd.set_option('max_colwidth', 20)
+
+
+# spark.sql("""select * from advert_sb.bbi_seg{}_{}""".format(task_num, 'raw_output')).show(3, False)
+
+
+# proc_saver(seg, task_num, 'appd_raw', persistent='True', smol='False', partition='business_dt')
+# archivator(user='',input_sp=filter_guys,task=task_num)
+
+
+# seg4_ph = spark.read.orc('{}.bi_ph_seg4'.format(nn['rnd-dwh'])).select("phones").distinct()
+# seg4_ph.write.format("orc").mode('overwrite').saveAsTable('prd_advert_tmp.bbi_seg4_ph')
+
+
+spark.sql("describe prd_advert_dict.v_app_rules").show()
+
+
+/opt/adv/spark-jobs/dict-manager/run_dict_manager.sh --insert --dict app_rules --from-string "PlayStation App;eventcom.api.np.km.playstation.net;host_name" --delimiter ";"
+/opt/adv/spark-jobs/dict-manager/run_dict_manager.sh --insert --overwrite --dict catalog_mts_bd --from-hdfs-files /apps/hive//bbi_cleared3 --format orc
+/opt/adv/spark-jobs/dict-manager/run_dict_manager.sh --insert --dict sqlseg_hosts --from-local-file /home/osts.csv --format csv --delimiter ";"
+/opt/adv/spark-jobs/dict-manager/run_dict_manager.sh --update --dict app_rules --set "source='host_name'" --where "source is null"
+/opt/adv/spark-jobs/dict-manager/run_dict_manager.sh --delete --dict sqlseg_hosts --where "segment_name = 'Пользователи Viber'"
+
+
+income_high = spark.sql("""
+select distinct msisdn from plt_mcs_t_base.income_top_card
+where 1=1                         
+	and income_m1 > 70000
+	and income_m2 > 70000
+	and income_m3 > 70000""")
+income_high.count()
+
+inner join (select distinct msisdn from advert_dm.segments_bd_custom where name IN ('income.v3.10_20','income.v3.20_30', 'income.v3.30_45', 'income.v3.45_75', 'income.v3.75_150', 'income.v3.150_inf')) b on a.msisdn = b.msisdn""")
+inner join (select distinct msisdn from advert_dm.segments_bd_custom where name IN ('age.35_44')) b on concat('7', a.msisdn) = b.msisdn
+inner join (select distinct msisdn from advert_dm.segments_bd_custom where name IN ('sex.female')) c on concat('7', a.msisdn) = c.msisdn
+
+
+# ntwk onln dwh
+raw.mtsru_sdwh_smr_ntwk_actv_online__cdtl
+
+
+left join (select distinct concat('7', msisdn) msisdn from prd_advert_ods.web_segment where segment_name IN ('taxi.Sitimobil') and request_date_ymd >= '2020-03-30') b on a.msisdn = b.msisdn
+
+
+spark.sql('refresh table prd_advert_dict.v_segments_ref')
+spark.sql("select * from prd_advert_dict.v_segments_ref where lower(full_name) like '%seg1640%' or lower(full_name) like '%seg1634%'").toPandas().head()
+
+
+spark.sql("refresh table prd_advert_dict.v_segment_export_rules")
+spark.sql("""
+select * from prd_advert_dict.v_segment_export_rules where segments_ref_id IN (
+'1000869',
+'1000870',
+'1000871',
+'1000872',
+'1000873') order by segments_ref_id asc
+""").toPandas().head(7)

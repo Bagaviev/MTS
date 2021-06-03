@@ -1,0 +1,27 @@
+source activate py36
+
+Пиздатый старт (команды обезличены)
+
+jupyter notebook --ip='' --no-browser --port=8888  --NotebookApp.token=abc
+jupyter notebook --ip='' --no-browser --port=8888  --NotebookApp.token=abc
+
+Не пиздатый старт 
+jupyter notebook --no-browser --ip --NotebookApp.iopub_data_rate_limit=10000000
+jupyter notebook --no-browser --ip
+
+---------------------------------------------
+старый коннект: 
+Запуск локально в поиске просто jupiter  (папка для работы)
+
+--------------
+check task
+
+agreagte antona 
+
+/opt/adv/spark-jobs/segmentator-dev/run_segmentator.sh \
+--job-type hosts \
+--in-file hosts.txt \
+--out-file segmentator_result.txt \
+--last-range-begin 2019-05-25 \
+--last-range-end 2019-07-25 \
+--max-hits-num=10000000

@@ -1,0 +1,85 @@
+===========================================================================DWH============================================================================================task_num='1842'
+task_num='1880'
+
+import pandas as pd
+pd.set_option('display.max_colwidth', 30)
+from IPython.core.display import display, HTML, clear_output
+display(HTML("<style>.container { width:90% !important; }</style>"))
+import warnings 
+warnings.filterwarnings('ignore')
+from IPython.core.interactiveshell import InteractiveShell 
+InteractiveShell.ast_node_interactivity = "all"
+
+from dstools.spark.core import active_namenode
+from dstools.spark import init_spark2
+
+nn = {c:active_namenode(c) for c in clusters}
+
+from dstools.spark import init_spark2
+spark = init_spark2({
+    'appName': 'Task_2',
+    'spark.yarn.access.hadoopFileSystems': "{0}, {1}".format(nn[''], nn['']),
+    'spark.yarn.queue':'default'
+})
+===========================================================================PROC============================================================================================
+task_num='1880'
+
+import pandas as pd
+pd.set_option('display.max_colwidth', 30)
+from IPython.core.display import display, HTML, clear_output
+display(HTML("<style>.container { width:80% !important; }</style>"))
+import warnings 
+warnings.filterwarnings('ignore')
+from IPython.core.interactiveshell import InteractiveShell 
+InteractiveShell.ast_node_interactivity = "all"
+
+from dstools.spark.core import active_namenode
+from dstools.spark import init_spark2
+clusters = ['', '']
+nn = {c:active_namenode(c) for c in clusters}
+
+from dstools.spark import init_spark2
+spark = init_spark2({
+    'appName': 'Task',
+    'spark.yarn.access.hadoopFileSystems': "{0}, {1}".format(nn[''], nn[''])
+})
+====================================================GEO====================================================
+task_num='2312'
+
+from IPython.core.display import display, HTML, clear_output
+display(HTML("<style>.container { width:80% !important; }</style>"))
+import warnings 
+warnings.filterwarnings('ignore')
+from IPython.core.interactiveshell import InteractiveShell 
+InteractiveShell.ast_node_interactivity = "all"
+
+from dstools.spark.core import active_namenode
+from dstools.spark import init_spark2
+clusters = ['', '']
+nn = {c:active_namenode(c) for c in clusters}
+
+from dstools.spark import init_spark2, init_sql_magic 
+from datetime import datetime, timedelta
+
+spark = init_spark2({
+    'appName': 'GeoSpaaaaark',
+    'spark.yarn.queue': 'default',
+    'spark.jars.packages': 'org.datasyslab:geospark:1.2.0,org.datasyslab:geospark-sql_2.3:1.2.0',
+    'spark.jars.ivySettings': 'advertIvySettings.xml',
+    # "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+    "spark.kryo.registrator": "org.datasyslab.geospark.serde.GeoSparkKryoRegistrator"
+}) 
+========================================================================================================
+
+from IPython.core.display import display, HTML, clear_output            
+display(HTML("<style>.container { width:80% !important; }</style>"))
+import warnings 
+warnings.filterwarnings('ignore')
+from IPython.core.interactiveshell import InteractiveShell 
+InteractiveShell.ast_node_interactivity = "all"
+
+from dstools.spark import init_spark2
+spark = init_spark2({
+    'appName': 'Task_2',
+    'spark.yarn.access.hadoopFileSystems': ''
+})
